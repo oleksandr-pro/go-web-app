@@ -1,8 +1,10 @@
 package main
 
 import (
+	"html/template"
 	"net/http"
-	"text/template"
+
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
@@ -33,6 +35,12 @@ func main() {
 }
 
 func indexGetHandler(w http.ResponseWriter, r *http.Request) {
+	session, _ := store.Get(r, "session")
+	_, ok := session.Values["username"]
+	if !ok {
+		http.Redirect(w, r, "/login", 302)
+		return
+	}
 	comments, err := client.LRange("comments", 0, 10).Result()
 	if err != nil {
 		return
@@ -54,6 +62,15 @@ func loginGetHandler(w http.ResponseWriter, r *http.Request) {
 func loginPostHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	username := r.PostForm.Get("username")
+	password := r.PostForm.Get("password")
+	hash, err := client.Get("user:" + username).Bytes()
+	if err != nil {
+		return
+	}
+	err = bcrypt.CompareHashAndPassword(hash, []byte(password))
+	if err != nil {
+		return
+	}
 	session, _ := store.Get(r, "session")
 	session.Values["username"] = username
 	session.Save(r, w)
@@ -80,5 +97,11 @@ func registerPostHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	username := r.PostForm.Get("username")
 	password := r.PostForm.Get("password")
-
+	cost := bcrypt.DefaultCost
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), cost)
+	if err != nil {
+		return
+	}
+	client.Set("user:"+username, hash, 0)
+	http.Redirect(w, r, "/login", 302)
 }
