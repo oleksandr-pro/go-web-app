@@ -1,8 +1,8 @@
 package main
 
 import (
-	"html/template"
 	"net/http"
+	"text/template"
 
 	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
@@ -23,6 +23,8 @@ func main() {
 	r.HandleFunc("/", indexPostHandler).Methods("POST")
 	r.HandleFunc("/login", loginGetHandler).Methods("GET")
 	r.HandleFunc("/login", loginPostHandler).Methods("POST")
+	r.HandleFunc("/register", registerGetHandler).Methods("GET")
+	r.HandleFunc("/register", registerPostHandler).Methods("POST")
 	r.HandleFunc("/test", testGetHandler).Methods("GET")
 	fs := http.FileServer(http.Dir("./static/"))
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static", fs))
@@ -68,4 +70,15 @@ func testGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write([]byte(username))
+}
+
+func registerGetHandler(w http.ResponseWriter, r *http.Request) {
+	templates.ExecuteTemplate(w, "register.html", nil)
+}
+
+func registerPostHandler(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	username := r.PostForm.Get("username")
+	password := r.PostForm.Get("password")
+
 }
